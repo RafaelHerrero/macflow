@@ -16,7 +16,9 @@ set -euo pipefail
 # ── Paths ──────────────────────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
-BIN_PATH="$BIN_DIR/macflow"
+BIN_PATH="$BIN_DIR/macflow"          # convenience CLI symlink -> the bundle's binary
+APP_DIR="$HOME/Applications/Macflow.app"
+APP_BIN="$APP_DIR/Contents/MacOS/Macflow"
 CONFIG_DIR="$HOME/.config/macflow"
 CONFIG_FILE="$CONFIG_DIR/config.toml"
 REPO_CONFIG="$REPO_DIR/config.toml"
@@ -36,10 +38,20 @@ cd "$REPO_DIR"
 swift build -c release
 BUILT_BIN="$(swift build -c release --show-bin-path)/Macflow"
 
-# ── 2. Install binary ──────────────────────────────────────────────────────
-say "Installing binary at $BIN_PATH"
+# ── 2. Assemble the .app bundle ──────────────────────────────────────────────
+# A proper .app bundle (Info.plist + icon) is what gives Macflow a name and a
+# nice icon in System Settings → Accessibility, the menu bar and Finder. A bare
+# binary would show a generic icon there instead.
+say "Assembling $APP_DIR"
+rm -rf "$APP_DIR"
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+install -m 755 "$BUILT_BIN" "$APP_BIN"
+cp "$REPO_DIR/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "$REPO_DIR/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
+
+# Convenience CLI symlink so `macflow` still works from the terminal.
 mkdir -p "$BIN_DIR"
-install -m 755 "$BUILT_BIN" "$BIN_PATH"
+ln -sf "$APP_BIN" "$BIN_PATH"
 
 # ── 2b. Code signing (stable, self-signed) ─────────────────────────────────
 # The Accessibility permission is tied to the binary's signature. An ad-hoc
@@ -90,12 +102,12 @@ EOF
 }
 
 if ensure_codesign_cert && \
-   codesign --force --sign "$CODESIGN_CERT" --identifier com.macflow.agent "$BIN_PATH"; then
+   codesign --force --sign "$CODESIGN_CERT" --identifier com.macflow.agent "$APP_DIR"; then
     say "Signed with '$CODESIGN_CERT' — Accessibility permission persists across rebuilds."
 else
     echo "  ⚠ Could not sign with a stable certificate — using an ad-hoc signature."
     echo "    (The Accessibility permission will need re-granting after each rebuild.)"
-    codesign --force --sign - --identifier com.macflow.agent "$BIN_PATH" 2>/dev/null || true
+    codesign --force --sign - --identifier com.macflow.agent "$APP_DIR" 2>/dev/null || true
 fi
 
 # ── 3. Configuration (dotfiles-friendly) ───────────────────────────────────
@@ -140,7 +152,7 @@ if [[ ! -w "$LAUNCH_AGENTS" ]]; then
 fi
 
 mkdir -p "$LOG_DIR"
-sed -e "s|__BINARY_PATH__|$BIN_PATH|g" \
+sed -e "s|__BINARY_PATH__|$APP_BIN|g" \
     -e "s|__LOG_OUT__|$LOG_OUT|g" \
     -e "s|__LOG_ERR__|$LOG_ERR|g" \
     "$REPO_DIR/LaunchAgent/$PLIST_NAME" > "$PLIST_PATH"
@@ -153,7 +165,9 @@ launchctl enable "$GUI_DOMAIN/$LABEL" 2>/dev/null || true
 
 say "Done! Macflow is running in the menu bar."
 echo
+echo "  • App installed at: $APP_DIR"
 echo "  • Grant the Accessibility permission when prompted"
-echo "    (System Settings → Privacy & Security → Accessibility)."
+echo "    (System Settings → Privacy & Security → Accessibility — it now shows"
+echo "     the Macflow icon)."
 echo "  • Edit your shortcuts in: $REPO_CONFIG"
-echo "  • Add ~/.local/bin to your PATH if it isn't already."
+echo "  • CLI symlink at $BIN_PATH (add ~/.local/bin to your PATH if needed)."

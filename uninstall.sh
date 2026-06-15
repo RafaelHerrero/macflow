@@ -5,6 +5,7 @@
 set -euo pipefail
 
 BIN_PATH="$HOME/.local/bin/macflow"
+APP_DIR="$HOME/Applications/Macflow.app"
 PLIST_PATH="$HOME/Library/LaunchAgents/com.macflow.agent.plist"
 LABEL="com.macflow.agent"
 GUI_DOMAIN="gui/$(id -u)"
@@ -15,7 +16,8 @@ say "Stopping and removing the LaunchAgent…"
 launchctl bootout "$GUI_DOMAIN/$LABEL" 2>/dev/null || true
 rm -f "$PLIST_PATH"
 
-say "Removing binary…"
+say "Removing the app bundle and CLI symlink…"
+rm -rf "$APP_DIR"
 rm -f "$BIN_PATH"
 
 say "Done. Your config in ~/.config/macflow has been preserved."

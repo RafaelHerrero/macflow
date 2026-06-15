@@ -57,8 +57,11 @@ cd macflow
 `install.sh` does everything:
 
 1. Builds the binary in release mode.
-2. Installs it to `~/.local/bin/macflow`.
-3. Signs the binary with a stable self-signed certificate — **created automatically
+2. Assembles a proper `Macflow.app` bundle (with `Info.plist` + icon) at
+   `~/Applications/Macflow.app`, and a CLI symlink at `~/.local/bin/macflow`.
+   The bundle is what gives Macflow a name and icon in **System Settings →
+   Accessibility**, the menu bar and Finder.
+3. Signs the bundle with a stable self-signed certificate — **created automatically
    on the first run** (`macflow-codesign` in your login keychain) and reused after.
    This is what makes the Accessibility permission survive future rebuilds.
 4. Creates `~/.config/macflow/config.toml` (a symlink to the repo's `config.toml`).
@@ -172,9 +175,15 @@ macflow/
 │   ├── WindowManager/    # WindowManager, WindowAction, AXWindow
 │   ├── AppSwitcher/      # AppSwitcher
 │   └── Accessibility/    # AccessibilityManager
+├── Resources/
+│   ├── AppIcon.icns      # app icon (generated, committed)
+│   └── Info.plist        # .app bundle metadata (name, icon, LSUIElement)
+├── scripts/
+│   ├── generate-icon.swift   # draws the icon with CoreGraphics (no deps)
+│   └── build-icon.sh         # generate-icon.swift + iconutil -> AppIcon.icns
 ├── LaunchAgent/com.macflow.agent.plist
 ├── config.toml.example
-├── install.sh                    # build, sign (auto-creates cert), install, start
+├── install.sh                    # build, bundle, sign (auto-creates cert), install, start
 ├── uninstall.sh
 └── README.md
 ```
@@ -204,7 +213,12 @@ The code is modular and easy to extend.
 swift build              # debug
 swift run Macflow        # run directly in the terminal
 swift build -c release   # optimized binary
+./scripts/build-icon.sh  # regenerate Resources/AppIcon.icns (after editing the icon)
 ```
+
+The icon is drawn procedurally in [`scripts/generate-icon.swift`](./scripts/generate-icon.swift)
+with CoreGraphics — no design tool or external assets. Tweak the colors/glyph there
+and re-run `./scripts/build-icon.sh`, then `./install.sh` to apply it.
 
 LaunchAgent logs: `~/Library/Logs/macflow.out.log` and `~/Library/Logs/macflow.err.log`.
 Macflow records there what was loaded and every window action it ran —
