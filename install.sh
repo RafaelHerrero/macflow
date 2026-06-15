@@ -24,6 +24,9 @@ LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
 PLIST_NAME="com.macflow.agent.plist"
 PLIST_PATH="$LAUNCH_AGENTS/$PLIST_NAME"
 LABEL="com.macflow.agent"
+LOG_DIR="$HOME/Library/Logs"
+LOG_OUT="$LOG_DIR/macflow.out.log"
+LOG_ERR="$LOG_DIR/macflow.err.log"
 
 say() { printf "\033[1;34m▸\033[0m %s\n" "$1"; }
 
@@ -136,7 +139,11 @@ if [[ ! -w "$LAUNCH_AGENTS" ]]; then
     exit 1
 fi
 
-sed "s|__BINARY_PATH__|$BIN_PATH|g" "$REPO_DIR/LaunchAgent/$PLIST_NAME" > "$PLIST_PATH"
+mkdir -p "$LOG_DIR"
+sed -e "s|__BINARY_PATH__|$BIN_PATH|g" \
+    -e "s|__LOG_OUT__|$LOG_OUT|g" \
+    -e "s|__LOG_ERR__|$LOG_ERR|g" \
+    "$REPO_DIR/LaunchAgent/$PLIST_NAME" > "$PLIST_PATH"
 
 # Reload the agent (bootout the old one, bootstrap the new one).
 GUI_DOMAIN="gui/$(id -u)"

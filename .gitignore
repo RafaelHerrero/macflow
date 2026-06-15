@@ -9,6 +9,8 @@
 # LaunchAgent logs
 *.log
 
-# Personal config: the template (config.toml.example) is versioned;
-# the real config.toml is yours — uncomment if you do NOT want to version it.
-# config.toml
+# Personal config: only the template (config.toml.example) is versioned.
+# install.sh generates config.toml from it on first run, so your personal
+# shortcuts stay out of the repo. To version your own shortcuts in a fork,
+# force-add it: `git add -f config.toml`.
+config.toml

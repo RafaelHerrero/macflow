@@ -145,11 +145,13 @@ See the fully commented [`config.toml.example`](./config.toml.example).
 ## Syncing via Git (dotfiles)
 
 `install.sh` keeps the `config.toml` **inside the repository** and creates a symlink
-at `~/.config/macflow/config.toml`. This way you version-control your shortcuts:
+at `~/.config/macflow/config.toml`. The file is **git-ignored by default** so the
+upstream repo never ships someone else's personal shortcuts. In your own fork you
+can version-control them by force-adding the file:
 
 ```bash
 cd macflow
-git add config.toml
+git add -f config.toml
 git commit -m "my shortcuts"
 git push
 ```
@@ -204,7 +206,7 @@ swift run Macflow        # run directly in the terminal
 swift build -c release   # optimized binary
 ```
 
-LaunchAgent logs: `/tmp/macflow.out.log` and `/tmp/macflow.err.log`.
+LaunchAgent logs: `~/Library/Logs/macflow.out.log` and `~/Library/Logs/macflow.err.log`.
 Macflow records there what was loaded and every window action it ran —
 useful for debugging shortcuts that "do nothing".
 
@@ -216,7 +218,7 @@ useful for debugging shortcuts that "do nothing".
 It's almost always the Accessibility permission. Check the log:
 
 ```bash
-tail -f /tmp/macflow.err.log
+tail -f ~/Library/Logs/macflow.err.log
 ```
 
 - `perform(...) ignored: NO Accessibility permission` → grant/re-grant
@@ -246,6 +248,37 @@ sudo chown -R "$(whoami)":staff ~/Library/LaunchAgents
 **Moving between monitors.** `next-monitor`/`prev-monitor` move the focused window
 to the adjacent display, preserving its relative position/size. With 2 monitors,
 both toggle to the other one.
+
+---
+
+## Security & privacy
+
+Macflow is built **from source on your own machine** — there is no pre-compiled
+binary to trust. The whole codebase is ~1,100 lines of Swift you can read in a sitting.
+
+**What it does *not* do:**
+
+- ❌ No network access — no `URLSession`, HTTP, telemetry or auto-update calls.
+- ❌ No shell execution — no `Process`, `system()`, or spawning of other binaries.
+- ❌ No keylogging — global shortcuts use Carbon `RegisterEventHotKey`, which the OS
+  matches against *your specific combinations*. It is **not** a `CGEventTap`, so it
+  cannot read what you type.
+- ❌ No clipboard, microphone, camera, or file scanning.
+
+**What it needs, and why:**
+
+- **Accessibility permission** — only to move/resize windows of other apps via the
+  Accessibility API (`AXUIElement`). The app switcher works without it.
+- **A self-signed code-signing certificate** (`macflow-codesign`) created in your
+  login keychain on first install. It is local, never leaves your machine, and exists
+  solely so the Accessibility permission survives rebuilds (see
+  [Installation](#installation)). Remove it any time with
+  `security delete-certificate -c macflow-codesign`.
+- **A LaunchAgent** to start the app at login. Remove it with `./uninstall.sh`.
+
+> **Distribution note.** Macflow is not notarized by Apple. Installing from source
+> with a local signature is fine for personal use; a notarized build would be needed
+> for friction-free distribution outside your own machines.
 
 ---
 

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Macflow LaunchAgent template.
-  install.sh replaces __BINARY_PATH__ with the real path of the binary and copies
-  this file to ~/Library/LaunchAgents/com.macflow.agent.plist.
+  install.sh replaces __BINARY_PATH__, __LOG_OUT__ and __LOG_ERR__ with real paths
+  and copies this file to ~/Library/LaunchAgents/com.macflow.agent.plist.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -26,8 +26,8 @@
     <string>Interactive</string>
 
     <key>StandardOutPath</key>
-    <string>/tmp/macflow.out.log</string>
+    <string>__LOG_OUT__</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/macflow.err.log</string>
+    <string>__LOG_ERR__</string>
 </dict>
 </plist>
