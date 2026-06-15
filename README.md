@@ -33,27 +33,41 @@ configured by a single `config.toml` file in dotfiles style.
 
 ## Installation
 
+### Quick install (one line)
+
 ```bash
-git clone <your-fork> macflow
+curl -fsSL https://raw.githubusercontent.com/RafaelHerrero/macflow/main/bootstrap.sh | bash
+```
+
+This downloads the source into `~/.local/share/macflow`, then builds, signs, installs
+and starts the app. **Re-run the same command to update.** Requires the Xcode Command
+Line Tools (`xcode-select --install`).
+
+> `curl … | bash` runs a remote script. You can read it first at
+> [`bootstrap.sh`](./bootstrap.sh), or use the manual steps below.
+
+### Manual install
+
+```bash
+git clone https://github.com/RafaelHerrero/macflow.git
 cd macflow
-
-# 1. (recommended) Create a stable signing certificate — ONCE only.
-#    Without it, the Accessibility permission must be re-granted on every build.
-./scripts/create-codesign-cert.sh
-
-# 2. Build, install, and start the app.
 ./install.sh
 ```
 
-`install.sh`:
+`install.sh` does everything:
 
 1. Builds the binary in release mode.
 2. Installs it to `~/.local/bin/macflow`.
-3. Signs the binary (with the `macflow-codesign` certificate, if it exists).
+3. Signs the binary with a stable self-signed certificate — **created automatically
+   on the first run** (`macflow-codesign` in your login keychain) and reused after.
+   This is what makes the Accessibility permission survive future rebuilds.
 4. Creates `~/.config/macflow/config.toml` (a symlink to the repo's `config.toml`).
 5. Installs the LaunchAgent (`~/Library/LaunchAgents/com.macflow.agent.plist`) and starts the app.
 
-### 3. Grant Accessibility permission
+> On the first run, a keychain dialog may appear when the binary is signed —
+> click **Always Allow**.
+
+### 2. Grant Accessibility permission
 
 The **window** shortcuts use the Accessibility API and require permission (the app
 switcher works without it). After installing:
@@ -64,17 +78,11 @@ switcher works without it). After installing:
 4. Enable **macflow**.
 
 > **Why the certificate matters.** macOS ties the Accessibility permission to the
-> binary's signature. With the default ad-hoc signature, the hash changes on every
+> binary's signature. With a plain ad-hoc signature, the hash changes on every
 > rebuild and the permission is lost (the app asks for access again). By signing with
-> a stable self-signed certificate (step 1), the permission is tied to the
-> certificate and **survives all future rebuilds** — the same technique used by
-> yabai/skhd. You only need to grant Accessibility once.
-
-### Accessibility shortcuts
-
-If you skip step 1 (the certificate), the app still works, but you'll have to
-re-grant Accessibility every time you rebuild. To create the certificate later,
-run `./scripts/create-codesign-cert.sh` and then `./install.sh`.
+> a stable self-signed certificate, the permission is tied to the certificate and
+> **survives all future rebuilds** — the same technique used by yabai/skhd. You only
+> need to grant Accessibility once. `install.sh` sets this up for you automatically.
 
 ### Uninstall
 
@@ -163,10 +171,8 @@ macflow/
 │   ├── AppSwitcher/      # AppSwitcher
 │   └── Accessibility/    # AccessibilityManager
 ├── LaunchAgent/com.macflow.agent.plist
-├── scripts/
-│   └── create-codesign-cert.sh   # creates the stable signing certificate
 ├── config.toml.example
-├── install.sh
+├── install.sh                    # build, sign (auto-creates cert), install, start
 ├── uninstall.sh
 └── README.md
 ```
@@ -214,8 +220,8 @@ tail -f /tmp/macflow.err.log
 ```
 
 - `perform(...) ignored: NO Accessibility permission` → grant/re-grant
-  Accessibility (see [Installation](#3-grant-accessibility-permission)).
-  If you rebuilt without the stable certificate, the old permission becomes "stale":
+  Accessibility (see [Installation](#2-grant-accessibility-permission)).
+  If a previous build used an ad-hoc signature, the old permission may be "stale":
   remove the **macflow** entry under Accessibility and grant it again.
 - `window 'x' → '...' FAILED to register` → the shortcut conflicts with another app;
   pick a different combination.
@@ -223,8 +229,10 @@ tail -f /tmp/macflow.err.log
   the spelling in `config.toml` (e.g. a key supported by `HotkeyParser`).
 
 **The app asks for Accessibility every time I rebuild.**
-You're using an ad-hoc signature. Run `./scripts/create-codesign-cert.sh` once
-and reinstall — the permission will then survive rebuilds.
+The binary fell back to an ad-hoc signature (the `macflow-codesign` certificate
+couldn't be created or used). Re-run `./install.sh` and, if a keychain dialog
+appears while signing, click **Always Allow**. You can confirm the certificate
+exists with `security find-certificate -c macflow-codesign`.
 
 **`Permission denied` when writing the LaunchAgent during `install.sh`.**
 The `~/Library/LaunchAgents` folder ended up owned by `root` (a leftover from some
@@ -234,11 +242,6 @@ old installer run with `sudo`). Return ownership to yourself and reinstall:
 sudo chown -R "$(whoami)":staff ~/Library/LaunchAgents
 ./install.sh
 ```
-
-**`./scripts/create-codesign-cert.sh` fails with "MAC verification failed".**
-Old version of the script. The current one already generates the PKCS12 in the
-legacy format (`-legacy -macalg sha1`) compatible with Apple's `security` — use the
-one from the repo.
 
 **Moving between monitors.** `next-monitor`/`prev-monitor` move the focused window
 to the adjacent display, preserving its relative position/size. With 2 monitors,

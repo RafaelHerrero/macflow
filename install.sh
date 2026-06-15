@@ -4,7 +4,9 @@
 #
 # What it does:
 #   1. Builds the binary in release mode.
-#   2. Copies the binary to ~/.local/bin/macflow.
+#   2. Installs the binary to ~/.local/bin/macflow and signs it with a stable
+#      self-signed certificate (created automatically on the first run) so the
+#      Accessibility permission survives future rebuilds.
 #   3. Creates ~/.config/macflow/ and symlinks config.toml (dotfiles style).
 #   4. Installs and loads the LaunchAgent (starts at login).
 #
@@ -36,26 +38,61 @@ say "Installing binary at $BIN_PATH"
 mkdir -p "$BIN_DIR"
 install -m 755 "$BUILT_BIN" "$BIN_PATH"
 
-# ── 2b. Code signing ───────────────────────────────────────────────────────
-# The Accessibility permission is tied to the signature. With the default
-# ad-hoc signature, the cdhash changes on every build and the permission is lost
-# (re-prompt). If a self-signed "macflow-codesign" certificate exists in the
-# keychain, we sign with it: the permission then applies to any future build.
+# ── 2b. Code signing (stable, self-signed) ─────────────────────────────────
+# The Accessibility permission is tied to the binary's signature. An ad-hoc
+# signature changes its hash on every build, so macOS treats each rebuild as a
+# new app and re-prompts for permission. We sign with a stable self-signed
+# certificate instead, so the permission survives all future rebuilds. The
+# certificate is created automatically the first time and reused afterwards.
 CODESIGN_CERT="macflow-codesign"
-signed_with_cert=false
-if security find-certificate -c "$CODESIGN_CERT" >/dev/null 2>&1; then
-    say "Signing with the '$CODESIGN_CERT' certificate (persistent permission)"
-    if codesign --force --sign "$CODESIGN_CERT" --identifier com.macflow.agent "$BIN_PATH" 2>/dev/null; then
-        signed_with_cert=true
-    else
-        echo "  ⚠ Failed to sign with '$CODESIGN_CERT' — falling back to ad-hoc."
-    fi
-fi
-if [[ "$signed_with_cert" == false ]]; then
+
+# Creates the self-signed code-signing cert if it doesn't exist yet.
+# Returns 0 if the cert is available (existing or freshly created), 1 otherwise.
+ensure_codesign_cert() {
+    security find-certificate -c "$CODESIGN_CERT" >/dev/null 2>&1 && return 0
+
+    say "Creating self-signed signing certificate '$CODESIGN_CERT' (first run only)…"
+    local tmp; tmp="$(mktemp -d)" || return 1
+    local p12_pw="macflow-import"
+
+    cat > "$tmp/cert.conf" <<EOF
+[ req ]
+distinguished_name = dn
+x509_extensions    = v3
+prompt             = no
+[ dn ]
+CN = $CODESIGN_CERT
+[ v3 ]
+keyUsage         = critical, digitalSignature
+extendedKeyUsage = critical, codeSigning
+basicConstraints = critical, CA:false
+EOF
+
+    openssl req -x509 -newkey rsa:2048 -nodes \
+        -keyout "$tmp/key.pem" -out "$tmp/cert.pem" \
+        -days 3650 -config "$tmp/cert.conf" >/dev/null 2>&1 || { rm -rf "$tmp"; return 1; }
+
+    # -legacy + -macalg sha1 + a real password → PKCS12 format Apple's `security` reads.
+    openssl pkcs12 -export -legacy -macalg sha1 -out "$tmp/cert.p12" \
+        -inkey "$tmp/key.pem" -in "$tmp/cert.pem" \
+        -name "$CODESIGN_CERT" -passout pass:"$p12_pw" >/dev/null 2>&1 || { rm -rf "$tmp"; return 1; }
+
+    # -T /usr/bin/codesign pre-authorizes codesign to use the key.
+    security import "$tmp/cert.p12" -k "$HOME/Library/Keychains/login.keychain-db" \
+        -P "$p12_pw" -T /usr/bin/codesign >/dev/null 2>&1 || { rm -rf "$tmp"; return 1; }
+
+    rm -rf "$tmp"
+    echo "  ↳ A keychain dialog may appear when signing — click \"Always Allow\"."
+    return 0
+}
+
+if ensure_codesign_cert && \
+   codesign --force --sign "$CODESIGN_CERT" --identifier com.macflow.agent "$BIN_PATH"; then
+    say "Signed with '$CODESIGN_CERT' — Accessibility permission persists across rebuilds."
+else
+    echo "  ⚠ Could not sign with a stable certificate — using an ad-hoc signature."
+    echo "    (The Accessibility permission will need re-granting after each rebuild.)"
     codesign --force --sign - --identifier com.macflow.agent "$BIN_PATH" 2>/dev/null || true
-    echo "  ⚠ Ad-hoc signature: the Accessibility permission will need to be"
-    echo "    re-granted after every rebuild. To make it permanent,"
-    echo "    run once: ./scripts/create-codesign-cert.sh"
 fi
 
 # ── 3. Configuration (dotfiles-friendly) ───────────────────────────────────
