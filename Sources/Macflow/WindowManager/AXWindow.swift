@@ -1,19 +1,19 @@
 import AppKit
 import ApplicationServices
 
-/// Wrapper sobre o `AXUIElement` da janela frontmost, escondendo a verbosidade da
-/// Accessibility API por trás de uma interface com tipos do AppKit (`CGRect`).
+/// Wrapper over the frontmost window's `AXUIElement`, hiding the verbosity of the
+/// Accessibility API behind an interface using AppKit types (`CGRect`).
 ///
-/// IMPORTANTE: a Accessibility API usa coordenadas globais com origem no
-/// **canto superior-esquerdo** da tela principal e eixo Y crescendo para baixo —
-/// diferente do Cocoa (origem inferior-esquerda, Y para cima). A conversão fica
-/// centralizada aqui e em `WindowManager`.
+/// IMPORTANT: the Accessibility API uses global coordinates with the origin at the
+/// **top-left corner** of the main screen and the Y axis growing downward —
+/// unlike Cocoa (bottom-left origin, Y growing upward). The conversion is
+/// centralized here and in `WindowManager`.
 struct AXWindow {
 
     let element: AXUIElement
 
-    /// Obtém a janela em foco do app frontmost. `nil` se não houver permissão de
-    /// acessibilidade ou nenhuma janela focada.
+    /// Gets the focused window of the frontmost app. `nil` if there is no
+    /// accessibility permission or no focused window.
     static func focused() -> AXWindow? {
         guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
@@ -25,12 +25,12 @@ struct AXWindow {
             &windowRef
         )
         guard status == .success, let windowRef else { return nil }
-        // windowRef é um AXUIElement; a checagem de tipo é feita pela API.
+        // windowRef is an AXUIElement; the type check is done by the API.
         let window = windowRef as! AXUIElement
         return AXWindow(element: window)
     }
 
-    /// Frame atual da janela em coordenadas AX (origem superior-esquerda).
+    /// Current window frame in AX coordinates (top-left origin).
     var axFrame: CGRect? {
         guard let position = copyValue(kAXPositionAttribute, type: .cgPoint, as: CGPoint.self),
               let size = copyValue(kAXSizeAttribute, type: .cgSize, as: CGSize.self)
@@ -38,15 +38,15 @@ struct AXWindow {
         return CGRect(origin: position, size: size)
     }
 
-    /// Define posição e tamanho (em coordenadas AX). A posição é aplicada antes e
-    /// depois do tamanho para acomodar apps que clampam dimensões à posição atual.
+    /// Sets position and size (in AX coordinates). The position is applied both before
+    /// and after the size to accommodate apps that clamp dimensions to the current position.
     func setAXFrame(_ frame: CGRect) {
         setPosition(frame.origin)
         setSize(frame.size)
         setPosition(frame.origin)
     }
 
-    // MARK: - Leitura/escrita de atributos AX
+    // MARK: - Reading/writing AX attributes
 
     private func setPosition(_ point: CGPoint) {
         var p = point

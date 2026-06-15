@@ -1,28 +1,28 @@
 import Foundation
 
-/// Traduz um `Config` em atalhos globais concretos, ligando cada um à ação certa
-/// (focar app ou mover janela). Reaplicável a cada hot-reload da configuração.
+/// Translates a `Config` into concrete global hotkeys, wiring each one to the right
+/// action (focus an app or move a window). Reapplicable on every config hot-reload.
 @MainActor
 final class HotkeyBinder {
 
     private let windowManager = WindowManager()
     private let appSwitcher = AppSwitcher()
 
-    /// Reconstrói todos os atalhos a partir da configuração fornecida.
+    /// Rebuilds all hotkeys from the provided configuration.
     func bind(config: Config) {
         HotkeyCenter.shared.unregisterAll()
         bindApps(config)
         bindWindows(config)
     }
 
-    // MARK: - Apps (modificador + tecla → focar/abrir app)
+    // MARK: - Apps (modifier + key → focus/open app)
 
     private func bindApps(_ config: Config) {
         let modifiers = HotkeyParser.parseModifiers(config.appModifier)
 
         for (key, appIdentifier) in config.apps {
-            // A tecla do app costuma ser um dígito; reusamos o keyMap do parser
-            // criando um atalho "<modificador>+<tecla>".
+            // The app key is usually a digit; we reuse the parser's keyMap by
+            // building a "<modifier>+<key>" shortcut.
             guard let hotkey = HotkeyParser.parse("\(config.appModifier)+\(key)") ?? hotkeyFromKey(key, modifiers: modifiers)
             else { continue }
 
@@ -32,22 +32,22 @@ final class HotkeyBinder {
         }
     }
 
-    /// Constrói um `Hotkey` a partir de uma tecla isolada + máscara de modificadores.
+    /// Builds a `Hotkey` from a standalone key + modifier mask.
     private func hotkeyFromKey(_ key: String, modifiers: UInt32) -> Hotkey? {
         guard let base = HotkeyParser.parse(key) else { return nil }
         return Hotkey(keyCode: base.keyCode, modifiers: modifiers)
     }
 
-    // MARK: - Janelas (atalho → ação de window management)
+    // MARK: - Windows (hotkey → window management action)
 
     private func bindWindows(_ config: Config) {
         for (actionName, shortcut) in config.windows {
             guard let action = WindowAction(rawValue: actionName) else {
-                Log.info("janela: ação desconhecida '\(actionName)' — ignorada")
+                Log.info("window: unknown action '\(actionName)' — ignored")
                 continue
             }
             guard let hotkey = HotkeyParser.parse(shortcut) else {
-                Log.info("janela '\(actionName)': não consegui interpretar o atalho '\(shortcut)' — ignorado")
+                Log.info("window '\(actionName)': could not parse shortcut '\(shortcut)' — ignored")
                 continue
             }
 
@@ -55,9 +55,9 @@ final class HotkeyBinder {
                 self?.windowManager.perform(action)
             }
             if ok {
-                Log.info("janela '\(actionName)' → '\(shortcut)' registrada")
+                Log.info("window '\(actionName)' → '\(shortcut)' registered")
             } else {
-                Log.info("janela '\(actionName)' → '\(shortcut)' FALHOU ao registrar (conflito com outro app?)")
+                Log.info("window '\(actionName)' → '\(shortcut)' FAILED to register (conflict with another app?)")
             }
         }
     }

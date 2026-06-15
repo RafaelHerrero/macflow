@@ -1,15 +1,15 @@
 import AppKit
 
-/// Abre ou foca aplicativos a partir de um identificador (nome ou bundle id).
+/// Opens or focuses applications from an identifier (name or bundle id).
 ///
-/// Estratégia:
-///   1. Se o app já está rodando → traz para frente.
-///   2. Senão → procura o `.app` nas pastas de Applications e abre.
-///   3. Como fallback → resolve por bundle id via Launch Services.
+/// Strategy:
+///   1. If the app is already running → bring it to the front.
+///   2. Otherwise → look for the `.app` in the Applications folders and open it.
+///   3. As a fallback → resolve by bundle id via Launch Services.
 @MainActor
 final class AppSwitcher {
 
-    /// Diretórios padrão onde procurar bundles `.app`, em ordem de prioridade.
+    /// Default directories to search for `.app` bundles, in priority order.
     private static let searchPaths = [
         "/Applications",
         "\(NSHomeDirectory())/Applications",
@@ -18,7 +18,7 @@ final class AppSwitcher {
         "/System/Applications/Utilities"
     ]
 
-    /// Abre ou foca o app identificado por `identifier` (nome ou bundle id).
+    /// Opens or focuses the app identified by `identifier` (name or bundle id).
     func activate(_ identifier: String) {
         if let running = runningApplication(matching: identifier) {
             running.activate(options: [.activateAllWindows])
@@ -27,24 +27,24 @@ final class AppSwitcher {
         launch(identifier)
     }
 
-    // MARK: - Localizar app em execução
+    // MARK: - Locate running app
 
     private func runningApplication(matching identifier: String) -> NSRunningApplication? {
         let apps = NSWorkspace.shared.runningApplications
 
-        // Por bundle id (case-insensitive).
+        // By bundle id (case-insensitive).
         if let match = apps.first(where: {
             $0.bundleIdentifier?.caseInsensitiveCompare(identifier) == .orderedSame
         }) {
             return match
         }
-        // Por nome localizado.
+        // By localized name.
         return apps.first {
             $0.localizedName?.caseInsensitiveCompare(identifier) == .orderedSame
         }
     }
 
-    // MARK: - Lançar app
+    // MARK: - Launch app
 
     private func launch(_ identifier: String) {
         let config = NSWorkspace.OpenConfiguration()
@@ -55,24 +55,24 @@ final class AppSwitcher {
         }
     }
 
-    /// Resolve a URL do bundle `.app`: primeiro procurando por nome nas pastas de
-    /// Applications, depois caindo para o Launch Services por bundle id.
+    /// Resolves the `.app` bundle URL: first searching by name in the Applications
+    /// folders, then falling back to Launch Services by bundle id.
     private func resolveURL(for identifier: String) -> URL? {
         let fm = FileManager.default
 
-        // 1. Busca por nome de arquivo "<identifier>.app" nas pastas conhecidas.
+        // 1. Search by file name "<identifier>.app" in the known folders.
         let appName = identifier.hasSuffix(".app") ? identifier : "\(identifier).app"
         for base in Self.searchPaths {
             let candidate = URL(fileURLWithPath: base).appendingPathComponent(appName)
             if fm.fileExists(atPath: candidate.path) { return candidate }
         }
 
-        // 2. Fallback: trata o identificador como bundle id.
+        // 2. Fallback: treat the identifier as a bundle id.
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
             return url
         }
 
-        // 3. Último recurso: deixa o Launch Services resolver pelo nome.
+        // 3. Last resort: let Launch Services resolve by name.
         return NSWorkspace.shared.urlForApplication(
             withBundleIdentifier: "com.apple.\(identifier.lowercased())"
         )

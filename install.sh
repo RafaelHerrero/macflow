@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# Macflow — instalador
+# Macflow — installer
 #
-# O que ele faz:
-#   1. Compila o binário em modo release.
-#   2. Copia o binário para ~/.local/bin/macflow.
-#   3. Cria ~/.config/macflow/ e linka o config.toml (estilo dotfiles).
-#   4. Instala e carrega o LaunchAgent (inicia no login).
+# What it does:
+#   1. Builds the binary in release mode.
+#   2. Copies the binary to ~/.local/bin/macflow.
+#   3. Creates ~/.config/macflow/ and symlinks config.toml (dotfiles style).
+#   4. Installs and loads the LaunchAgent (starts at login).
 #
-# Uso:  ./install.sh
+# Usage:  ./install.sh
 set -euo pipefail
 
-# ── Caminhos ──────────────────────────────────────────────────────────────
+# ── Paths ──────────────────────────────────────────────────────────────────
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
 BIN_PATH="$BIN_DIR/macflow"
@@ -25,85 +25,91 @@ LABEL="com.macflow.agent"
 
 say() { printf "\033[1;34m▸\033[0m %s\n" "$1"; }
 
-# ── 1. Compilar ────────────────────────────────────────────────────────────
-say "Compilando Macflow (release)…"
+# ── 1. Build ───────────────────────────────────────────────────────────────
+say "Building Macflow (release)…"
 cd "$REPO_DIR"
 swift build -c release
 BUILT_BIN="$(swift build -c release --show-bin-path)/Macflow"
 
-# ── 2. Instalar binário ────────────────────────────────────────────────────
-say "Instalando binário em $BIN_PATH"
+# ── 2. Install binary ──────────────────────────────────────────────────────
+say "Installing binary at $BIN_PATH"
 mkdir -p "$BIN_DIR"
 install -m 755 "$BUILT_BIN" "$BIN_PATH"
 
-# ── 2b. Assinatura de código ───────────────────────────────────────────────
-# A permissão de Acessibilidade é amarrada à assinatura. Com a assinatura
-# ad-hoc padrão, o cdhash muda a cada build e a permissão é perdida (re-prompt).
-# Se existir um certificado self-signed "macflow-codesign" no chaveiro, assinamos
-# com ele: a permissão passa a valer para qualquer build futuro.
+# ── 2b. Code signing ───────────────────────────────────────────────────────
+# The Accessibility permission is tied to the signature. With the default
+# ad-hoc signature, the cdhash changes on every build and the permission is lost
+# (re-prompt). If a self-signed "macflow-codesign" certificate exists in the
+# keychain, we sign with it: the permission then applies to any future build.
 CODESIGN_CERT="macflow-codesign"
 signed_with_cert=false
 if security find-certificate -c "$CODESIGN_CERT" >/dev/null 2>&1; then
-    say "Assinando com o certificado '$CODESIGN_CERT' (permissão persistente)"
+    say "Signing with the '$CODESIGN_CERT' certificate (persistent permission)"
     if codesign --force --sign "$CODESIGN_CERT" --identifier com.macflow.agent "$BIN_PATH" 2>/dev/null; then
         signed_with_cert=true
     else
-        echo "  ⚠ Falha ao assinar com '$CODESIGN_CERT' — caindo para ad-hoc."
+        echo "  ⚠ Failed to sign with '$CODESIGN_CERT' — falling back to ad-hoc."
     fi
 fi
 if [[ "$signed_with_cert" == false ]]; then
     codesign --force --sign - --identifier com.macflow.agent "$BIN_PATH" 2>/dev/null || true
-    echo "  ⚠ Assinatura ad-hoc: a permissão de Acessibilidade precisará ser"
-    echo "    re-concedida após cada recompilação. Para torná-la permanente,"
-    echo "    rode uma vez: ./scripts/create-codesign-cert.sh"
+    echo "  ⚠ Ad-hoc signature: the Accessibility permission will need to be"
+    echo "    re-granted after every rebuild. To make it permanent,"
+    echo "    run once: ./scripts/create-codesign-cert.sh"
 fi
 
-# ── 3. Configuração (dotfiles-friendly) ────────────────────────────────────
+# ── 3. Configuration (dotfiles-friendly) ───────────────────────────────────
 mkdir -p "$CONFIG_DIR"
-# Mantém o config "fonte" dentro do repo para versionar no Git.
+# Keep the "source" config inside the repo so it can be versioned in Git.
 if [[ ! -e "$REPO_CONFIG" ]]; then
-    say "Criando config inicial a partir do template"
+    say "Creating initial config from the template"
     cp "$REPO_DIR/config.toml.example" "$REPO_CONFIG"
 fi
-# Symlink: ~/.config/macflow/config.toml -> <repo>/config.toml
-if [[ -L "$CONFIG_FILE" || ! -e "$CONFIG_FILE" ]]; then
-    say "Linkando config: $CONFIG_FILE -> $REPO_CONFIG"
-    ln -sf "$REPO_CONFIG" "$CONFIG_FILE"
+# Config symlinking:
+#   • If a config already exists (real file OR symlink), leave it untouched —
+#     this preserves a custom setup such as a symlink into your dotfiles.
+#   • Only create a default symlink (-> repo config) when nothing is there yet.
+if [[ -L "$CONFIG_FILE" ]]; then
+    say "Config is a symlink -> $(readlink "$CONFIG_FILE") — keeping it."
+elif [[ -e "$CONFIG_FILE" ]]; then
+    say "A real config.toml already exists — keeping yours."
 else
-    say "Já existe um config.toml real (não-symlink) — preservando o seu."
+    say "Linking config: $CONFIG_FILE -> $REPO_CONFIG"
+    ln -s "$REPO_CONFIG" "$CONFIG_FILE"
 fi
 
 # ── 4. LaunchAgent ─────────────────────────────────────────────────────────
-say "Instalando LaunchAgent"
+say "Installing LaunchAgent"
 mkdir -p "$LAUNCH_AGENTS" 2>/dev/null || true
 
-# ~/Library/LaunchAgents deve pertencer a VOCÊ. Se um instalador antigo a criou
-# como root, a escrita falha. Detectamos e orientamos em vez de pedir sudo no
-# script todo (instalar o agent como root o faria rodar na sessão errada).
+# ~/Library/LaunchAgents must be owned by YOU. If an old installer created it
+# as root, writing fails. We detect this and guide you instead of running the
+# whole script under sudo (installing the agent as root would run it in the
+# wrong session).
 if [[ ! -w "$LAUNCH_AGENTS" ]]; then
     echo
-    echo "  ✗ Sem permissão de escrita em $LAUNCH_AGENTS"
-    echo "    (dono atual: $(stat -f '%Su' "$LAUNCH_AGENTS"))."
+    echo "  ✗ No write permission for $LAUNCH_AGENTS"
+    echo "    (current owner: $(stat -f '%Su' "$LAUNCH_AGENTS"))."
     echo
-    echo "    Essa pasta deveria ser sua. Corrija a posse UMA vez com:"
+    echo "    This folder should be yours. Fix the ownership ONCE with:"
     echo
     echo "        sudo chown -R \"\$(whoami)\":staff \"$LAUNCH_AGENTS\""
     echo
-    echo "    Depois rode ./install.sh novamente (sem sudo)."
+    echo "    Then run ./install.sh again (without sudo)."
     exit 1
 fi
 
 sed "s|__BINARY_PATH__|$BIN_PATH|g" "$REPO_DIR/LaunchAgent/$PLIST_NAME" > "$PLIST_PATH"
 
-# Recarrega o agent (bootout do antigo, bootstrap do novo).
+# Reload the agent (bootout the old one, bootstrap the new one).
 GUI_DOMAIN="gui/$(id -u)"
 launchctl bootout "$GUI_DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$GUI_DOMAIN" "$PLIST_PATH"
 launchctl enable "$GUI_DOMAIN/$LABEL" 2>/dev/null || true
 
-say "Pronto! O Macflow está rodando na barra de menus."
+say "Done! Macflow is running in the menu bar."
 echo
-echo "  • Conceda permissão de Acessibilidade quando solicitado"
-echo "    (Ajustes do Sistema → Privacidade e Segurança → Acessibilidade)."
-echo "  • Edite seus atalhos em: $REPO_CONFIG"
-echo "  • Adicione ~/.local/bin ao PATH se ainda não estiver."
+echo "  • Grant the Accessibility permission when prompted"
+echo "    (System Settings → Privacy & Security → Accessibility)."
+echo "  • Edit your shortcuts in: $REPO_CONFIG"
+echo "  • Add ~/.local/bin to your PATH if it isn't already."

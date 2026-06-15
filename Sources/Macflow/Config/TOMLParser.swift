@@ -1,22 +1,22 @@
 import Foundation
 
-/// Parser TOML mínimo e dependency-free.
+/// Minimal, dependency-free TOML parser.
 ///
-/// Suporta apenas o subconjunto que o Macflow precisa, mantendo o binário leve:
-///   • Comentários iniciados por `#` (inclusive inline, fora de aspas).
-///   • Cabeçalhos de seção `[apps]`, `[windows]`, `[settings]`.
-///   • Pares `chave = valor`, com chave podendo ser nua (`left`) ou entre aspas (`"1"`).
-///   • Valores string entre aspas (`"Safari"`) ou nus (`true`, `42`, `Ctrl+Left`).
+/// Supports only the subset that Macflow needs, keeping the binary lightweight:
+///   • Comments starting with `#` (including inline, outside of quotes).
+///   • Section headers `[apps]`, `[windows]`, `[settings]`.
+///   • `key = value` pairs, where the key can be bare (`left`) or quoted (`"1"`).
+///   • String values quoted (`"Safari"`) or bare (`true`, `42`, `Ctrl+Left`).
 ///
-/// O resultado é uma estrutura simples: `[seção: [chave: valor]]`.
-/// Linhas fora de qualquer seção são agrupadas sob a chave vazia `""`.
+/// The result is a simple structure: `[section: [key: value]]`.
+/// Lines outside of any section are grouped under the empty key `""`.
 enum TOMLParser {
 
-    /// Resultado do parse: dicionário de seções → (chave → valor).
+    /// Parse result: dictionary of sections → (key → value).
     typealias Document = [String: [String: String]]
 
-    /// Faz o parse do conteúdo TOML. Erros de sintaxe individuais são ignorados
-    /// (linha simplesmente descartada) para nunca derrubar o app por um typo no config.
+    /// Parses the TOML content. Individual syntax errors are ignored
+    /// (the line is simply discarded) so a typo in the config never crashes the app.
     static func parse(_ content: String) -> Document {
         var document: Document = [:]
         var currentSection = ""
@@ -25,7 +25,7 @@ enum TOMLParser {
             let line = stripComment(from: rawLine).trimmingCharacters(in: .whitespaces)
             if line.isEmpty { continue }
 
-            // Cabeçalho de seção: [nome]
+            // Section header: [name]
             if line.hasPrefix("[") && line.hasSuffix("]") {
                 let name = line.dropFirst().dropLast().trimmingCharacters(in: .whitespaces)
                 currentSection = unquote(name)
@@ -33,7 +33,7 @@ enum TOMLParser {
                 continue
             }
 
-            // Par chave = valor
+            // key = value pair
             guard let equals = line.firstIndex(of: "=") else { continue }
             let key = unquote(String(line[..<equals]).trimmingCharacters(in: .whitespaces))
             let value = unquote(String(line[line.index(after: equals)...]).trimmingCharacters(in: .whitespaces))
@@ -47,7 +47,7 @@ enum TOMLParser {
 
     // MARK: - Helpers
 
-    /// Remove um comentário `#...` da linha, respeitando `#` dentro de aspas.
+    /// Removes a `#...` comment from the line, respecting `#` inside quotes.
     private static func stripComment(from line: String) -> String {
         var insideQuotes = false
         var result = ""
@@ -59,7 +59,7 @@ enum TOMLParser {
         return result
     }
 
-    /// Remove aspas duplas externas, se presentes.
+    /// Removes the outer double quotes, if present.
     private static func unquote(_ text: String) -> String {
         guard text.count >= 2, text.hasPrefix("\""), text.hasSuffix("\"") else { return text }
         return String(text.dropFirst().dropLast())

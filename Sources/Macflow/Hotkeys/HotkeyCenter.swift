@@ -1,17 +1,17 @@
 import Carbon.HIToolbox
 import Foundation
 
-/// Camada fina sobre a API de hotkeys globais do Carbon (`RegisterEventHotKey`).
+/// Thin layer over Carbon's global hotkey API (`RegisterEventHotKey`).
 ///
-/// Escolhemos Carbon em vez de uma dependência externa porque:
-///   • é a API que de fato registra atalhos globais no macOS;
-///   • zero dependências = binário menor e build mais rápido;
-///   • o callback roda na main run loop, então o overhead é nulo quando ocioso.
+/// We chose Carbon over an external dependency because:
+///   • it is the API that actually registers global hotkeys on macOS;
+///   • zero dependencies = smaller binary and faster build;
+///   • the callback runs on the main run loop, so overhead is zero when idle.
 ///
-/// Um único `EventHandler` despacha todos os atalhos via um id incremental.
+/// A single `EventHandler` dispatches all hotkeys via an incremental id.
 final class HotkeyCenter {
 
-    /// Singleton — o handler C global precisa de um ponto de acesso estável.
+    /// Singleton — the global C handler needs a stable access point.
     nonisolated(unsafe) static let shared = HotkeyCenter()
 
     private var handlers: [UInt32: @MainActor () -> Void] = [:]
@@ -21,7 +21,7 @@ final class HotkeyCenter {
 
     private init() { installHandler() }
 
-    /// Registra um atalho global. A ação roda na main actor.
+    /// Registers a global hotkey. The action runs on the main actor.
     @discardableResult
     func register(_ hotkey: Hotkey, action: @escaping @MainActor () -> Void) -> Bool {
         let id = nextID
@@ -44,27 +44,27 @@ final class HotkeyCenter {
         return true
     }
 
-    /// Remove todos os atalhos registrados (usado no hot-reload da config).
+    /// Removes all registered hotkeys (used during config hot-reload).
     func unregisterAll() {
         for ref in refs.values { UnregisterEventHotKey(ref) }
         refs.removeAll()
         handlers.removeAll()
-        // Não reiniciamos `nextID`: ids únicos por sessão evitam colisões em re-registros.
+        // We don't reset `nextID`: per-session unique ids avoid collisions on re-registration.
     }
 
     // MARK: - Internals
 
-    /// Assinatura de 4 chars 'MCFL' para identificar nossos hotkeys.
+    /// A 4-char 'MCFL' signature to identify our hotkeys.
     private static let signature: OSType = {
         let chars = "MCFL".utf8
         return chars.reduce(OSType(0)) { ($0 << 8) + OSType($1) }
     }()
 
-    /// Despacha o evento de tecla para a ação correspondente. Roda na main thread.
+    /// Dispatches the key event to the matching action. Runs on the main thread.
     fileprivate func handle(id: UInt32) {
-        // `handlers` é tocado apenas na main thread (registro e este callback do
-        // dispatcher). Copiamos a ação para um local para não capturar `self` na
-        // closure isolada à main actor.
+        // `handlers` is touched only on the main thread (registration and this
+        // dispatcher callback). We copy the action into a local so we don't capture
+        // `self` in the main-actor-isolated closure.
         guard let action = handlers[id] else { return }
         MainActor.assumeIsolated {
             action()

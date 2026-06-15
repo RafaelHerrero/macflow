@@ -1,33 +1,33 @@
 import AppKit
 
-/// Todas as ações de janela suportadas. O nome cru (kebab-case) é o usado no
-/// `config.toml` na seção `[windows]`.
+/// All supported window actions. The raw name (kebab-case) is the one used in
+/// `config.toml` under the `[windows]` section.
 enum WindowAction: String, CaseIterable, Sendable {
-    // Metades
+    // Halves
     case left, right, top, bottom
-    // Quadrantes
+    // Quadrants
     case topLeft = "top-left"
     case topRight = "top-right"
     case bottomLeft = "bottom-left"
     case bottomRight = "bottom-right"
-    // Terços (horizontais)
+    // Thirds (horizontal)
     case leftThird = "left-third"
     case centerThird = "center-third"
     case rightThird = "right-third"
     case leftTwoThirds = "left-two-thirds"
     case rightTwoThirds = "right-two-thirds"
-    // Tela cheia / centralizar
+    // Fullscreen / center
     case maximize
     case center
-    // Monitores
+    // Monitors
     case nextMonitor = "next-monitor"
     case prevMonitor = "prev-monitor"
 
-    /// Calcula o frame-alvo (em coordenadas Cocoa, origem inferior-esquerda) para
-    /// ações que dependem apenas da área visível da tela.
+    /// Computes the target frame (in Cocoa coordinates, bottom-left origin) for
+    /// actions that depend only on the screen's visible area.
     ///
-    /// Retorna `nil` para ações que precisam de contexto extra (tamanho atual da
-    /// janela ou outra tela) — essas são tratadas diretamente no `WindowManager`.
+    /// Returns `nil` for actions that need extra context (current window size or
+    /// another screen) — those are handled directly in `WindowManager`.
     func frame(in visible: NSRect) -> NSRect? {
         let x = visible.minX, y = visible.minY
         let w = visible.width, h = visible.height
@@ -53,7 +53,7 @@ enum WindowAction: String, CaseIterable, Sendable {
 
         case .maximize: return visible
 
-        // Tratadas no WindowManager (precisam de mais contexto):
+        // Handled in WindowManager (need more context):
         case .center, .nextMonitor, .prevMonitor: return nil
         }
     }

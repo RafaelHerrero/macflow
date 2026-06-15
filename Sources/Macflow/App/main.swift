@@ -1,9 +1,9 @@
 import AppKit
 
-// Ponto de entrada do Macflow.
+// Macflow entry point.
 //
-// Configuramos o app como "accessory" (.accessory) para ele rodar como menu-bar-only:
-// sem ícone no Dock e sem aparecer no App Switcher (Cmd+Tab).
+// We configure the app as "accessory" (.accessory) so it runs as menu-bar-only:
+// no Dock icon and not shown in the App Switcher (Cmd+Tab).
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

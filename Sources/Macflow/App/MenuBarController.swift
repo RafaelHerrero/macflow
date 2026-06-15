@@ -1,7 +1,7 @@
 import AppKit
 
-/// Controla o ícone e o menu na barra de status. Mantém a UI mínima — o Macflow é
-/// configurado por arquivo, então o menu serve só para utilidades rápidas.
+/// Controls the status bar icon and menu. Keeps the UI minimal — Macflow is
+/// configured by file, so the menu only serves for quick utilities.
 @MainActor
 final class MenuBarController {
 
@@ -15,7 +15,7 @@ final class MenuBarController {
         buildMenu()
     }
 
-    /// Reconstrói o menu (ex.: para atualizar o status de acessibilidade).
+    /// Rebuilds the menu (e.g. to refresh the accessibility status).
     func refresh() {
         buildMenu()
     }
@@ -40,11 +40,11 @@ final class MenuBarController {
         menu.addItem(header)
         menu.addItem(.separator())
 
-        // Status de acessibilidade
+        // Accessibility status
         let trusted = AccessibilityManager.isTrusted
         let accessibilityTitle = trusted
-            ? "Acessibilidade: concedida"
-            : "Acessibilidade: conceder permissão…"
+            ? "Accessibility: granted"
+            : "Accessibility: grant permission…"
         let accessibilityItem = NSMenuItem(
             title: accessibilityTitle,
             action: trusted ? nil : #selector(grantAccessibility),
@@ -55,11 +55,11 @@ final class MenuBarController {
         menu.addItem(accessibilityItem)
         menu.addItem(.separator())
 
-        addItem(to: menu, title: "Recarregar configuração", action: #selector(reload), key: "r")
-        addItem(to: menu, title: "Editar config.toml", action: #selector(editConfig), key: "e")
-        addItem(to: menu, title: "Abrir pasta de configuração", action: #selector(openConfigFolder), key: "")
+        addItem(to: menu, title: "Reload configuration", action: #selector(reload), key: "r")
+        addItem(to: menu, title: "Edit config.toml", action: #selector(editConfig), key: "e")
+        addItem(to: menu, title: "Open config folder", action: #selector(openConfigFolder), key: "")
         menu.addItem(.separator())
-        addItem(to: menu, title: "Sair", action: #selector(quit), key: "q")
+        addItem(to: menu, title: "Quit", action: #selector(quit), key: "q")
 
         statusItem.menu = menu
     }
@@ -70,7 +70,7 @@ final class MenuBarController {
         menu.addItem(item)
     }
 
-    // MARK: - Ações do menu
+    // MARK: - Menu actions
 
     @objc private func grantAccessibility() {
         AccessibilityManager.requestIfNeeded(force: true)

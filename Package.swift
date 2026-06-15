@@ -1,14 +1,14 @@
 // swift-tools-version:6.0
 import PackageDescription
 
-// Macflow — gerenciador de atalhos globais e window management para macOS.
+// Macflow — global hotkey manager and window management for macOS.
 //
-// Projeto deliberadamente SEM dependências externas:
-//   • Hotkeys globais via Carbon (RegisterEventHotKey) — leve e confiável.
-//   • Parser TOML mínimo próprio (Sources/Macflow/Config/TOMLParser.swift).
-//   • Window management via Accessibility API (AXUIElement).
+// Deliberately built with NO external dependencies:
+//   • Global hotkeys via Carbon (RegisterEventHotKey) — lightweight and reliable.
+//   • Minimal in-house TOML parser (Sources/Macflow/Config/TOMLParser.swift).
+//   • Window management via the Accessibility API (AXUIElement).
 //
-// Resultado: binário pequeno, build rápido, consumo de CPU/RAM mínimo.
+// Result: small binary, fast build, minimal CPU/RAM usage.
 let package = Package(
     name: "Macflow",
     platforms: [

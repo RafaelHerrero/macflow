@@ -1,6 +1,6 @@
 import AppKit
 
-/// Orquestra os módulos: carrega config, registra hotkeys e mantém o menu bar.
+/// Orchestrates the modules: loads config, registers hotkeys, and maintains the menu bar.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -9,14 +9,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Pede acessibilidade logo de início (necessária para window management).
+        // Request accessibility right away (required for window management).
         AccessibilityManager.requestIfNeeded()
 
         menuBar = MenuBarController(onReload: { [weak self] in
             self?.configManager.reloadNow()
         })
 
-        // Toda vez que a config (re)carrega, religamos os atalhos.
+        // Every time the config (re)loads, we rebind the shortcuts.
         configManager.onReload = { [weak self] config in
             self?.hotkeyBinder.bind(config: config)
             self?.menuBar?.refresh()

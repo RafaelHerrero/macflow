@@ -1,112 +1,112 @@
 # Macflow
 
-Gerenciador leve de **atalhos globais** e **window management** para macOS,
-configurado por um único arquivo `config.toml` no estilo dotfiles.
+A lightweight manager for **global shortcuts** and **window management** on macOS,
+configured by a single `config.toml` file in dotfiles style.
 
-- ⚡️ **Leve**: binário ~200 KB, sem dependências externas, CPU ~0% quando ocioso.
-- 🎯 **App switcher**: `Ctrl+1`, `Ctrl+2`… abrem ou focam seus apps favoritos.
-- 🪟 **Window management**: metades, terços, quadrantes, maximizar, centralizar e mover entre monitores.
-- 🔁 **Hot-reload**: salvou o `config.toml`, os atalhos são reaplicados na hora.
-- 🍫 **Menu bar only**: sem ícone no Dock, sem ruído.
-- 🖥️ **Multi-monitor** completo.
+- ⚡️ **Lightweight**: ~200 KB binary, no external dependencies, ~0% CPU when idle.
+- 🎯 **App switcher**: `Ctrl+1`, `Ctrl+2`… open or focus your favorite apps.
+- 🪟 **Window management**: halves, thirds, quadrants, maximize, center, and move between monitors.
+- 🔁 **Hot-reload**: save the `config.toml` and the shortcuts are reapplied instantly.
+- 🍫 **Menu bar only**: no Dock icon, no noise.
+- 🖥️ **Full multi-monitor** support.
 
 ---
 
-## Como funciona
+## How it works
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
-| Hotkeys globais | Carbon `RegisterEventHotKey` (zero dependências) |
+| Global hotkeys | Carbon `RegisterEventHotKey` (zero dependencies) |
 | Window management | Accessibility API (`AXUIElement`) |
-| App switching | `NSWorkspace` + busca em `/Applications` |
-| Config | Parser TOML próprio + `DispatchSource` para hot-reload |
-| UI | AppKit menu bar (`NSStatusItem`), app `.accessory` |
+| App switching | `NSWorkspace` + search in `/Applications` |
+| Config | Custom TOML parser + `DispatchSource` for hot-reload |
+| UI | AppKit menu bar (`NSStatusItem`), `.accessory` app |
 
 ---
 
-## Requisitos
+## Requirements
 
-- macOS 13 (Ventura) ou superior
-- Swift 6 toolchain (Xcode 16+ ou Command Line Tools)
+- macOS 13 (Ventura) or later
+- Swift 6 toolchain (Xcode 16+ or Command Line Tools)
 
 ---
 
-## Instalação
+## Installation
 
 ```bash
-git clone <seu-fork> macflow
+git clone <your-fork> macflow
 cd macflow
 
-# 1. (recomendado) Cria um certificado de assinatura estável — UMA vez só.
-#    Sem isso, a permissão de Acessibilidade precisa ser re-concedida a cada build.
+# 1. (recommended) Create a stable signing certificate — ONCE only.
+#    Without it, the Accessibility permission must be re-granted on every build.
 ./scripts/create-codesign-cert.sh
 
-# 2. Compila, instala e inicia o app.
+# 2. Build, install, and start the app.
 ./install.sh
 ```
 
-O `install.sh`:
+`install.sh`:
 
-1. Compila o binário em release.
-2. Instala em `~/.local/bin/macflow`.
-3. Assina o binário (com o certificado `macflow-codesign`, se existir).
-4. Cria `~/.config/macflow/config.toml` (symlink para o `config.toml` do repo).
-5. Instala o LaunchAgent (`~/Library/LaunchAgents/com.macflow.agent.plist`) e inicia o app.
+1. Builds the binary in release mode.
+2. Installs it to `~/.local/bin/macflow`.
+3. Signs the binary (with the `macflow-codesign` certificate, if it exists).
+4. Creates `~/.config/macflow/config.toml` (a symlink to the repo's `config.toml`).
+5. Installs the LaunchAgent (`~/Library/LaunchAgents/com.macflow.agent.plist`) and starts the app.
 
-### 3. Conceder permissão de Acessibilidade
+### 3. Grant Accessibility permission
 
-Os atalhos de **janela** usam a Accessibility API e exigem permissão (o app
-switcher funciona sem ela). Após instalar:
+The **window** shortcuts use the Accessibility API and require permission (the app
+switcher works without it). After installing:
 
-1. Aperte qualquer atalho de janela (ex.: `Ctrl+Option+Return`) — vai surgir um prompt.
-2. Vá em **Ajustes do Sistema → Privacidade e Segurança → Acessibilidade**.
-3. Se já existir uma entrada **macflow** antiga, remova-a com o `−` (pode estar órfã).
-4. Habilite o **macflow**.
+1. Press any window shortcut (e.g. `Ctrl+Option+Return`) — a prompt will appear.
+2. Go to **System Settings → Privacy & Security → Accessibility**.
+3. If there's an old **macflow** entry already, remove it with `−` (it may be stale).
+4. Enable **macflow**.
 
-> **Por que o certificado importa.** O macOS amarra a permissão de Acessibilidade
-> à assinatura do binário. Com a assinatura ad-hoc padrão, o hash muda a cada
-> recompilação e a permissão é perdida (o app volta a pedir acesso). Assinando com
-> um certificado self-signed estável (passo 1), a permissão fica amarrada ao
-> certificado e **sobrevive a todas as recompilações futuras** — mesma técnica do
-> yabai/skhd. Você só precisa conceder a Acessibilidade uma única vez.
+> **Why the certificate matters.** macOS ties the Accessibility permission to the
+> binary's signature. With the default ad-hoc signature, the hash changes on every
+> rebuild and the permission is lost (the app asks for access again). By signing with
+> a stable self-signed certificate (step 1), the permission is tied to the
+> certificate and **survives all future rebuilds** — the same technique used by
+> yabai/skhd. You only need to grant Accessibility once.
 
-### Atalhos de Acessibilidade
+### Accessibility shortcuts
 
-Se você pular o passo 1 (certificado), o app ainda funciona, mas terá de
-re-conceder a Acessibilidade toda vez que recompilar. Para criar o certificado
-depois, rode `./scripts/create-codesign-cert.sh` e em seguida `./install.sh`.
+If you skip step 1 (the certificate), the app still works, but you'll have to
+re-grant Accessibility every time you rebuild. To create the certificate later,
+run `./scripts/create-codesign-cert.sh` and then `./install.sh`.
 
-### Desinstalar
+### Uninstall
 
 ```bash
-./uninstall.sh   # remove binário e LaunchAgent; preserva sua config
+./uninstall.sh   # removes the binary and LaunchAgent; preserves your config
 ```
 
 ---
 
-## Editando a configuração
+## Editing the configuration
 
-O arquivo fica em `~/.config/macflow/config.toml` (ou no repo, via symlink).
-Edite pelo menu (**Editar config.toml**) ou direto no seu editor. Ao salvar, o
-Macflow recarrega sozinho — não precisa reiniciar.
+The file lives at `~/.config/macflow/config.toml` (or in the repo, via symlink).
+Edit it from the menu (**Edit config.toml**) or directly in your editor. On save,
+Macflow reloads on its own — no need to restart.
 
 ### Apps
 
 ```toml
 [settings]
-app_modifier = "Ctrl"      # modificador comum a todos os apps
+app_modifier = "Ctrl"      # modifier shared by all apps
 
 [apps]
 "1" = "Safari"             # Ctrl+1
 "2" = "Visual Studio Code" # Ctrl+2
 "3" = "iTerm"
-"4" = "com.apple.Terminal" # bundle id também funciona
+"4" = "com.apple.Terminal" # bundle id works too
 ```
 
-App já aberto → é focado. App fechado → é aberto (busca em `/Applications`,
-`~/Applications`, `/System/Applications` e, por fim, via bundle id).
+App already open → it's focused. App closed → it's opened (searches `/Applications`,
+`~/Applications`, `/System/Applications`, and finally via bundle id).
 
-### Janelas
+### Windows
 
 ```toml
 [windows]
@@ -116,41 +116,41 @@ maximize = "Ctrl+Option+Return"
 next-monitor = "Ctrl+Option+Shift+Right"
 ```
 
-**Ações disponíveis:**
+**Available actions:**
 
-| Categoria | Ações |
+| Category | Actions |
 |---|---|
-| Metades | `left`, `right`, `top`, `bottom` |
-| Quadrantes | `top-left`, `top-right`, `bottom-left`, `bottom-right` |
-| Terços | `left-third`, `center-third`, `right-third`, `left-two-thirds`, `right-two-thirds` |
-| Tela | `maximize`, `center` |
-| Monitores | `next-monitor`, `prev-monitor` |
+| Halves | `left`, `right`, `top`, `bottom` |
+| Quadrants | `top-left`, `top-right`, `bottom-left`, `bottom-right` |
+| Thirds | `left-third`, `center-third`, `right-third`, `left-two-thirds`, `right-two-thirds` |
+| Screen | `maximize`, `center` |
+| Monitors | `next-monitor`, `prev-monitor` |
 
-**Modificadores:** `Ctrl`, `Option` (ou `Alt`), `Cmd`, `Shift`.
-**Teclas:** setas (`Left`/`Right`/`Up`/`Down`), letras, dígitos, `F1`–`F12`,
+**Modifiers:** `Ctrl`, `Option` (or `Alt`), `Cmd`, `Shift`.
+**Keys:** arrows (`Left`/`Right`/`Up`/`Down`), letters, digits, `F1`–`F12`,
 `Return`, `Space`, `Tab`, `Escape`.
 
-Veja o [`config.toml.example`](./config.toml.example) totalmente comentado.
+See the fully commented [`config.toml.example`](./config.toml.example).
 
 ---
 
-## Sincronizando via Git (dotfiles)
+## Syncing via Git (dotfiles)
 
-O `install.sh` mantém o `config.toml` **dentro do repositório** e cria um symlink
-em `~/.config/macflow/config.toml`. Assim você versiona seus atalhos:
+`install.sh` keeps the `config.toml` **inside the repository** and creates a symlink
+at `~/.config/macflow/config.toml`. This way you version-control your shortcuts:
 
 ```bash
 cd macflow
 git add config.toml
-git commit -m "meus atalhos"
+git commit -m "my shortcuts"
 git push
 ```
 
-Em outra máquina, basta clonar e rodar `./install.sh` novamente.
+On another machine, just clone and run `./install.sh` again.
 
 ---
 
-## Estrutura do projeto
+## Project structure
 
 ```
 macflow/
@@ -164,7 +164,7 @@ macflow/
 │   └── Accessibility/    # AccessibilityManager
 ├── LaunchAgent/com.macflow.agent.plist
 ├── scripts/
-│   └── create-codesign-cert.sh   # cria o certificado de assinatura estável
+│   └── create-codesign-cert.sh   # creates the stable signing certificate
 ├── config.toml.example
 ├── install.sh
 ├── uninstall.sh
@@ -173,86 +173,87 @@ macflow/
 
 ---
 
-## Adicionando novas ações
+## Adding new actions
 
-O código é modular e fácil de estender.
+The code is modular and easy to extend.
 
-**Nova ação de janela** (ex.: `almost-maximize`):
+**New window action** (e.g. `almost-maximize`):
 
-1. Adicione o `case` em [`WindowAction`](./Sources/Macflow/WindowManager/WindowAction.swift)
-   com seu `rawValue` em kebab-case.
-2. Implemente o frame em `frame(in:)` (ou trate no `WindowManager` se precisar de
-   contexto extra, como faz `center`).
-3. Use a ação no `config.toml`: `almost-maximize = "Ctrl+Option+M"`.
+1. Add the `case` in [`WindowAction`](./Sources/Macflow/WindowManager/WindowAction.swift)
+   with its `rawValue` in kebab-case.
+2. Implement the frame in `frame(in:)` (or handle it in `WindowManager` if you need
+   extra context, as `center` does).
+3. Use the action in `config.toml`: `almost-maximize = "Ctrl+Option+M"`.
 
-**Novo tipo de atalho/tecla:** adicione o token ao `keyMap`/`modifierMap` em
+**New shortcut/key type:** add the token to `keyMap`/`modifierMap` in
 [`HotkeyParser`](./Sources/Macflow/Hotkeys/HotkeyParser.swift).
 
 ---
 
-## Desenvolvimento
+## Development
 
 ```bash
 swift build              # debug
-swift run Macflow        # roda direto no terminal
-swift build -c release   # binário otimizado
+swift run Macflow        # run directly in the terminal
+swift build -c release   # optimized binary
 ```
 
-Logs do LaunchAgent: `/tmp/macflow.out.log` e `/tmp/macflow.err.log`.
-O Macflow registra ali o que foi carregado e cada ação de janela executada —
-útil para depurar atalhos que "não fazem nada".
+LaunchAgent logs: `/tmp/macflow.out.log` and `/tmp/macflow.err.log`.
+Macflow records there what was loaded and every window action it ran —
+useful for debugging shortcuts that "do nothing".
 
 ---
 
 ## Troubleshooting
 
-**Atalhos de janela não fazem nada.**
-Quase sempre é permissão de Acessibilidade. Veja o log:
+**Window shortcuts do nothing.**
+It's almost always the Accessibility permission. Check the log:
 
 ```bash
 tail -f /tmp/macflow.err.log
 ```
 
-- `perform(...) ignorado: SEM permissão de Acessibilidade` → conceda/re-conceda a
-  Acessibilidade (veja [Instalação](#3-conceder-permissão-de-acessibilidade)).
-  Se você recompilou sem o certificado estável, a permissão antiga vira "órfã":
-  remova a entrada **macflow** em Acessibilidade e conceda de novo.
-- `janela 'x' → '...' FALHOU ao registrar` → o atalho conflita com outro app;
-  escolha outra combinação.
-- Nenhuma linha `perform(...)` ao apertar → o atalho não foi reconhecido; confira
-  a grafia no `config.toml` (ex.: tecla suportada em `HotkeyParser`).
+- `perform(...) ignored: NO Accessibility permission` → grant/re-grant
+  Accessibility (see [Installation](#3-grant-accessibility-permission)).
+  If you rebuilt without the stable certificate, the old permission becomes "stale":
+  remove the **macflow** entry under Accessibility and grant it again.
+- `window 'x' → '...' FAILED to register` → the shortcut conflicts with another app;
+  pick a different combination.
+- No `perform(...)` line when you press → the shortcut wasn't recognized; check
+  the spelling in `config.toml` (e.g. a key supported by `HotkeyParser`).
 
-**O app pede Acessibilidade toda vez que recompilo.**
-Você está com assinatura ad-hoc. Rode `./scripts/create-codesign-cert.sh` uma vez
-e reinstale — a permissão passa a sobreviver às recompilações.
+**The app asks for Accessibility every time I rebuild.**
+You're using an ad-hoc signature. Run `./scripts/create-codesign-cert.sh` once
+and reinstall — the permission will then survive rebuilds.
 
-**`Permission denied` ao gravar o LaunchAgent durante o `install.sh`.**
-A pasta `~/Library/LaunchAgents` ficou com dono `root` (resquício de algum
-instalador antigo com `sudo`). Devolva a posse a você e reinstale:
+**`Permission denied` when writing the LaunchAgent during `install.sh`.**
+The `~/Library/LaunchAgents` folder ended up owned by `root` (a leftover from some
+old installer run with `sudo`). Return ownership to yourself and reinstall:
 
 ```bash
 sudo chown -R "$(whoami)":staff ~/Library/LaunchAgents
 ./install.sh
 ```
 
-**`./scripts/create-codesign-cert.sh` falha com "MAC verification failed".**
-Versão antiga do script. A atual já gera o PKCS12 no formato legado
-(`-legacy -macalg sha1`) compatível com o `security` da Apple — use a do repo.
+**`./scripts/create-codesign-cert.sh` fails with "MAC verification failed".**
+Old version of the script. The current one already generates the PKCS12 in the
+legacy format (`-legacy -macalg sha1`) compatible with Apple's `security` — use the
+one from the repo.
 
-**Mover entre monitores.** `next-monitor`/`prev-monitor` movem a janela em foco
-para o display adjacente preservando posição/tamanho relativos. Com 2 monitores,
-ambos alternam para o outro.
-
----
-
-## Como contribuir
-
-1. Fork → branch → mudança pequena e focada.
-2. `swift build` sem warnings.
-3. Abra um PR descrevendo o comportamento.
+**Moving between monitors.** `next-monitor`/`prev-monitor` move the focused window
+to the adjacent display, preserving its relative position/size. With 2 monitors,
+both toggle to the other one.
 
 ---
 
-## Licença
+## How to contribute
+
+1. Fork → branch → small, focused change.
+2. `swift build` with no warnings.
+3. Open a PR describing the behavior.
+
+---
+
+## License
 
 MIT.

@@ -1,47 +1,47 @@
 import Foundation
 
-/// Centraliza o ciclo de vida da configuração:
-///   • localiza/cria `~/.config/macflow/config.toml`;
-///   • carrega e faz parse;
-///   • observa o arquivo e recarrega com debounce (hot-reload);
-///   • notifica interessados via `onReload`.
+/// Centralizes the configuration lifecycle:
+///   • locates/creates `~/.config/macflow/config.toml`;
+///   • loads and parses it;
+///   • watches the file and reloads with debounce (hot-reload);
+///   • notifies interested parties via `onReload`.
 @MainActor
 final class ConfigManager {
 
-    /// Caminho do diretório de configuração: `~/.config/macflow`.
+    /// Path of the configuration directory: `~/.config/macflow`.
     static var directory: URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".config/macflow", isDirectory: true)
     }
 
-    /// Caminho do arquivo de configuração.
+    /// Path of the configuration file.
     static var configFile: URL {
         directory.appendingPathComponent("config.toml")
     }
 
-    /// Configuração atualmente carregada.
+    /// Currently loaded configuration.
     private(set) var current: Config = .default
 
-    /// Disparado sempre que a config é (re)carregada, na main actor.
+    /// Fired whenever the config is (re)loaded, on the main actor.
     var onReload: ((Config) -> Void)?
 
     private var watcher: FileWatcher?
     private var debounce: DispatchWorkItem?
 
-    /// Carrega a configuração inicial e começa a observar o arquivo.
+    /// Loads the initial configuration and starts watching the file.
     func start() {
         ensureConfigExists()
         reloadNow()
 
         let watcher = FileWatcher(url: Self.configFile) { [weak self] in
-            // O watcher roda em fila própria; voltamos para a main actor.
+            // The watcher runs on its own queue; we hop back to the main actor.
             Task { @MainActor in self?.scheduleReload() }
         }
         watcher.start()
         self.watcher = watcher
     }
 
-    /// Recarrega imediatamente (usado pelo menu "Reload").
+    /// Reloads immediately (used by the "Reload" menu).
     func reloadNow() {
         let document: TOMLParser.Document
         if let text = try? String(contentsOf: Self.configFile, encoding: .utf8) {
@@ -55,7 +55,7 @@ final class ConfigManager {
 
     // MARK: - Internals
 
-    /// Recarrega com debounce de 150ms para evitar múltiplos eventos de save.
+    /// Reloads with a 150ms debounce to avoid multiple save events.
     private func scheduleReload() {
         debounce?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.reloadNow() }
@@ -63,7 +63,7 @@ final class ConfigManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
     }
 
-    /// Cria o diretório e um config inicial a partir do template, se necessário.
+    /// Creates the directory and an initial config from the template, if needed.
     private func ensureConfigExists() {
         let fm = FileManager.default
         try? fm.createDirectory(at: Self.directory, withIntermediateDirectories: true)

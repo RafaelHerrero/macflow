@@ -1,11 +1,11 @@
 import Foundation
 
-/// Observa um único arquivo e dispara um callback quando ele muda.
+/// Watches a single file and fires a callback when it changes.
 ///
-/// Usa `DispatchSource` sobre o file descriptor. Como muitos editores salvam de
-/// forma atômica (escrevem em um temp e renomeiam por cima), tratamos eventos de
-/// `.delete`/`.rename` re-armando o watcher no novo arquivo. Isso garante
-/// hot-reload confiável com vim, VS Code, etc.
+/// Uses `DispatchSource` over the file descriptor. Since many editors save
+/// atomically (write to a temp file and rename over the original), we handle
+/// `.delete`/`.rename` events by re-arming the watcher on the new file. This
+/// ensures reliable hot-reload with vim, VS Code, etc.
 final class FileWatcher: @unchecked Sendable {
 
     private let url: URL
@@ -20,12 +20,12 @@ final class FileWatcher: @unchecked Sendable {
         self.onChange = onChange
     }
 
-    /// Começa a observar. Idempotente.
+    /// Starts watching. Idempotent.
     func start() {
         queue.async { [weak self] in self?.arm() }
     }
 
-    /// Para de observar e libera recursos.
+    /// Stops watching and releases resources.
     func stop() {
         queue.async { [weak self] in self?.disarm() }
     }
@@ -50,7 +50,7 @@ final class FileWatcher: @unchecked Sendable {
             guard let self else { return }
             let flags = self.source?.data ?? []
             self.onChange()
-            // Save atômico: o arquivo original some — re-arma no novo inode.
+            // Atomic save: the original file disappears — re-arm on the new inode.
             if flags.contains(.delete) || flags.contains(.rename) {
                 self.queue.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                     self?.arm()

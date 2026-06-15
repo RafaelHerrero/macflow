@@ -1,17 +1,17 @@
 import Carbon.HIToolbox
 
-/// Representa um atalho já resolvido em termos do Carbon: virtual key code + máscara
-/// de modificadores. É o formato esperado por `RegisterEventHotKey`.
+/// Represents a shortcut already resolved in Carbon terms: virtual key code + modifier
+/// mask. This is the format expected by `RegisterEventHotKey`.
 struct Hotkey: Hashable, Sendable {
     let keyCode: UInt32
     let modifiers: UInt32
 }
 
-/// Converte strings legíveis ("Ctrl+Option+Left", "Cmd+Shift+M") em `Hotkey`.
+/// Converts human-readable strings ("Ctrl+Option+Left", "Cmd+Shift+M") into `Hotkey`.
 enum HotkeyParser {
 
-    /// Faz o parse de uma string de atalho. Retorna `nil` se a tecla principal
-    /// for desconhecida (modificadores sozinhos não formam um atalho válido).
+    /// Parses a shortcut string. Returns `nil` if the main key is unknown
+    /// (modifiers alone do not form a valid shortcut).
     static func parse(_ string: String) -> Hotkey? {
         let tokens = string
             .split(separator: "+")
@@ -33,7 +33,7 @@ enum HotkeyParser {
         return Hotkey(keyCode: keyCode, modifiers: modifiers)
     }
 
-    /// Faz o parse só dos modificadores (usado para o `app_modifier`).
+    /// Parses only the modifiers (used for `app_modifier`).
     static func parseModifiers(_ string: String) -> UInt32 {
         string
             .split(separator: "+")
@@ -43,7 +43,7 @@ enum HotkeyParser {
             }
     }
 
-    // MARK: - Tabelas de tradução
+    // MARK: - Translation tables
 
     private static let modifierMap: [String: UInt32] = [
         "ctrl": UInt32(controlKey), "control": UInt32(controlKey), "⌃": UInt32(controlKey),
@@ -52,18 +52,18 @@ enum HotkeyParser {
         "shift": UInt32(shiftKey), "⇧": UInt32(shiftKey)
     ]
 
-    /// Nome da tecla (minúsculo) → virtual key code do Carbon.
+    /// Key name (lowercase) → Carbon virtual key code.
     private static let keyMap: [String: UInt32] = {
         var map: [String: UInt32] = [
-            // Setas
+            // Arrows
             "left": UInt32(kVK_LeftArrow), "right": UInt32(kVK_RightArrow),
             "up": UInt32(kVK_UpArrow), "down": UInt32(kVK_DownArrow),
-            // Teclas especiais
+            // Special keys
             "return": UInt32(kVK_Return), "enter": UInt32(kVK_Return),
             "tab": UInt32(kVK_Tab), "space": UInt32(kVK_Space),
             "delete": UInt32(kVK_Delete), "backspace": UInt32(kVK_Delete),
             "escape": UInt32(kVK_Escape), "esc": UInt32(kVK_Escape),
-            // Símbolos / pontuação — aceitamos tanto o caractere quanto o nome.
+            // Symbols / punctuation — we accept both the character and the name.
             "minus": UInt32(kVK_ANSI_Minus), "-": UInt32(kVK_ANSI_Minus),
             "equal": UInt32(kVK_ANSI_Equal), "=": UInt32(kVK_ANSI_Equal),
             "period": UInt32(kVK_ANSI_Period), ".": UInt32(kVK_ANSI_Period),
@@ -75,13 +75,13 @@ enum HotkeyParser {
             "grave": UInt32(kVK_ANSI_Grave), "`": UInt32(kVK_ANSI_Grave),
             "leftbracket": UInt32(kVK_ANSI_LeftBracket), "[": UInt32(kVK_ANSI_LeftBracket),
             "rightbracket": UInt32(kVK_ANSI_RightBracket), "]": UInt32(kVK_ANSI_RightBracket),
-            // Dígitos
+            // Digits
             "0": UInt32(kVK_ANSI_0), "1": UInt32(kVK_ANSI_1), "2": UInt32(kVK_ANSI_2),
             "3": UInt32(kVK_ANSI_3), "4": UInt32(kVK_ANSI_4), "5": UInt32(kVK_ANSI_5),
             "6": UInt32(kVK_ANSI_6), "7": UInt32(kVK_ANSI_7), "8": UInt32(kVK_ANSI_8),
             "9": UInt32(kVK_ANSI_9)
         ]
-        // Letras A–Z
+        // Letters A–Z
         let letters: [String: Int] = [
             "a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D,
             "e": kVK_ANSI_E, "f": kVK_ANSI_F, "g": kVK_ANSI_G, "h": kVK_ANSI_H,
