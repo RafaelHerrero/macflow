@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Template de LaunchAgent do Macflow.
+  O install.sh substitui __BINARY_PATH__ pelo caminho real do binário e copia
+  este arquivo para ~/Library/LaunchAgents/com.macflow.agent.plist.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.macflow.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__BINARY_PATH__</string>
+    </array>
+
+    <!-- Inicia no login e mantém vivo (reinicia se cair). -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- App interativo: roda na sessão gráfica do usuário (Aqua). -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/macflow.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/macflow.err.log</string>
+</dict>
+</plist>

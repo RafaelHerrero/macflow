@@ -1,0 +1,14 @@
+# Build do SwiftPM
+.build/
+.swiftpm/
+*.xcodeproj
+
+# macOS
+.DS_Store
+
+# Logs do LaunchAgent
+*.log
+
+# Config pessoal: o template (config.toml.example) é versionado;
+# o config.toml real é seu — descomente se NÃO quiser versioná-lo.
+# config.toml
