@@ -19,12 +19,28 @@ final class AppSwitcher {
     ]
 
     /// Opens or focuses the app identified by `identifier` (name or bundle id).
+    ///
+    /// We always go through `openApplication`, even when the app is already
+    /// running. This mirrors clicking the app's Dock icon: it focuses the app AND
+    /// reopens a window if none is open. Using `NSRunningApplication.activate()`
+    /// alone would only bring a windowless app forward (e.g. one whose window you
+    /// closed with Cmd-W), showing nothing — which is why it "didn't open".
     func activate(_ identifier: String) {
-        if let running = runningApplication(matching: identifier) {
-            running.activate(options: [.activateAllWindows])
+        let running = runningApplication(matching: identifier)
+        guard let url = running?.bundleURL ?? resolveURL(for: identifier) else {
+            Log.info("activate('\(identifier)'): no .app found to open")
             return
         }
-        launch(identifier)
+
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
+            if let error {
+                Log.info("activate('\(identifier)'): open failed — \(error.localizedDescription)")
+            } else {
+                Log.info("activate('\(identifier)'): opened \(app?.localizedName ?? url.lastPathComponent)")
+            }
+        }
     }
 
     // MARK: - Locate running app
@@ -44,16 +60,7 @@ final class AppSwitcher {
         }
     }
 
-    // MARK: - Launch app
-
-    private func launch(_ identifier: String) {
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = true
-
-        if let url = resolveURL(for: identifier) {
-            NSWorkspace.shared.openApplication(at: url, configuration: config)
-        }
-    }
+    // MARK: - Resolve app URL
 
     /// Resolves the `.app` bundle URL: first searching by name in the Applications
     /// folders, then falling back to Launch Services by bundle id.
