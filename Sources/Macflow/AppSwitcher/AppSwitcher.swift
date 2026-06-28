@@ -34,13 +34,22 @@ final class AppSwitcher {
 
         let config = NSWorkspace.OpenConfiguration()
         config.activates = true
-        NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
+        // LaunchServices invokes this completion handler on a background queue
+        // (com.apple.launchservices.open-queue), NOT the main thread. It must be a
+        // `@Sendable`, non-isolated closure: if it inherited `AppSwitcher`'s
+        // `@MainActor` isolation, the Swift 6 runtime would assert it is running on
+        // the main executor, fail the check off-main, and trap (SIGTRAP) — crashing
+        // the app on every app-switch shortcut. We capture only Sendable values and
+        // call the non-isolated `Log.info`, so no main-actor hop is needed.
+        let fallbackName = url.lastPathComponent
+        let completion: @Sendable (NSRunningApplication?, Error?) -> Void = { app, error in
             if let error {
                 Log.info("activate('\(identifier)'): open failed — \(error.localizedDescription)")
             } else {
-                Log.info("activate('\(identifier)'): opened \(app?.localizedName ?? url.lastPathComponent)")
+                Log.info("activate('\(identifier)'): opened \(app?.localizedName ?? fallbackName)")
             }
         }
+        NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: completion)
     }
 
     // MARK: - Locate running app
